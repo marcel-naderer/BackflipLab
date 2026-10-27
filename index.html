@@ -1,0 +1,844 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Backflip Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: config console on the left, sticky simulation monitor on the right; stacks on phones (monitor first). */
+/* Layout: MCI title band with mountain photo on top; config console left, sticky simulation monitor right; stacks on phones.
+   Deliberately light-only, to match the MCI slide template. */
+:root{
+  color-scheme:light;
+  --mci:#004983; --mci-2:#0B5B9B; --mci-3:#5686AC; --mci-tint:#DBE5EF; --mci-wash:#EEF3F9;
+  --bg:#FFFFFF; --panel:#FFFFFF; --panel-2:#EEF3F9; --line:#D3DEEA;
+  --fg:#16263A; --muted:#55657A;
+  --accent:#004983; --accent-soft:#DBE5EF;
+  --good:#0E7F6E; --good-soft:#E2F2EE;
+  --warn:#B25E00; --warn-soft:#FBEEDD;
+  --bad:#B3261E; --bad-soft:#FAE5E3;
+  --robot:#F4C430; --robot-dark:#0B4F8A;
+  --sky:#E4ECF5; --ground:#C2CEDC;
+  --code-bg:#0C2741; --code-fg:#E6EEF7; --code-kw:#8EC3F2; --code-str:#9FE0CF; --code-cm:#8BA0B8;
+  --f-display:"Noto Sans","Segoe UI",Arial,sans-serif;
+  --f-body:"Noto Sans","Segoe UI",Arial,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--f-body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 40px}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(28px,4.4vw,44px);line-height:1.05;margin:4px 0 6px;text-wrap:balance;letter-spacing:-.01em}
+.lede{color:var(--muted);max-width:62ch;margin:0}
+.meta{display:flex;gap:10px;flex-wrap:wrap}
+.pill{font-family:var(--f-mono);font-size:12.5px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:var(--panel);white-space:nowrap}
+.pill b{font-weight:500;color:var(--accent)}
+
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.08fr);gap:20px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}.monitor{order:-1;position:static!important}}
+
+/* config cards */
+.cfgs{display:flex;flex-direction:column;gap:10px;min-width:0}
+.card{background:var(--mci-wash);border:1px solid transparent;border-radius:12px;padding:14px 16px;transition:border-color .2s, box-shadow .2s}
+.card.flag{border-color:var(--warn);box-shadow:0 0 0 3px var(--warn-soft)}
+.card-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.card-h h2{font-family:var(--f-display);font-weight:700;font-size:17px;margin:0;color:var(--mci)}
+.cls{font-family:var(--f-mono);font-size:12.5px;color:var(--accent);background:var(--accent-soft);padding:2px 7px;border-radius:6px}
+.what{color:var(--muted);font-size:13.5px;margin:2px 0 10px}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opt{display:flex;gap:10px;align-items:flex-start;padding:7px 9px;border-radius:8px;cursor:pointer;border:1px solid transparent}
+.opt:hover{background:var(--panel)}
+.opt input{margin:3px 0 0;accent-color:var(--accent);width:16px;height:16px;flex:none}
+.opt input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.opt span{min-width:0}
+.opt small{display:block;color:var(--muted);font-size:12.5px;line-height:1.35}
+.cfg-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+
+button{font-family:var(--f-body);font-size:15px;font-weight:600;border-radius:10px;padding:11px 18px;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--fg)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--mci);border-color:var(--mci);color:#fff}
+button.primary:hover{filter:brightness(1.08)}
+button:disabled{opacity:.5;cursor:default}
+button.ghost{background:transparent}
+.hint-btn{font-size:13px;padding:6px 10px;border-radius:8px;background:var(--warn-soft);border-color:transparent;color:var(--warn)}
+
+/* monitor */
+.monitor{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:12px;min-width:0}
+.screen{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.screen-bar{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--line);font-family:var(--f-mono);font-size:12px;color:var(--muted);flex-wrap:wrap}
+.rec{display:inline-flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.dot.live{background:var(--good)}
+.dot.real{background:var(--warn)}
+#sim{display:block;width:100%;aspect-ratio:16/9;background:var(--sky)}
+.under{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+@media (max-width:520px){.under{grid-template-columns:minmax(0,1fr)}}
+.curve-box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.curve-box .lbl{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+#curve{display:block;width:100%;aspect-ratio:16/9}
+.simwrap{position:relative;width:100%;aspect-ratio:16/9;background:var(--sky);touch-action:none}
+.simwrap canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.simwrap #sim{aspect-ratio:auto}
+.ovl{position:absolute;left:12px;top:10px;font-family:var(--f-mono);font-size:12px;color:var(--muted);pointer-events:none}
+.ovl.real{color:var(--warn)}
+.drag{position:absolute;right:12px;bottom:10px;font-family:var(--f-mono);font-size:11px;color:var(--muted);pointer-events:none;opacity:.8}
+.stats{display:flex;flex-direction:column;gap:8px;justify-content:center}
+.stat{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dashed var(--line);padding-bottom:6px;font-size:14px}
+.stat span:first-child{color:var(--muted)}
+.stat b{font-family:var(--f-mono);font-weight:500;font-variant-numeric:tabular-nums;text-align:right}
+.btnrow{display:flex;gap:10px;flex-wrap:wrap}
+.btnrow button{flex:1 1 160px}
+
+.result{border-radius:14px;padding:14px 16px;background:var(--panel-2);border:1px solid var(--line)}
+.result.good{background:var(--good-soft);border-color:transparent}
+.result.bad{background:var(--bad-soft);border-color:transparent}
+.result.warn{background:var(--warn-soft);border-color:transparent}
+.result .tag{font-family:var(--f-mono);font-size:12px;text-transform:uppercase;letter-spacing:.07em}
+.result.good .tag{color:var(--good)} .result.bad .tag{color:var(--bad)} .result.warn .tag{color:var(--warn)}
+.result h3{font-family:var(--f-display);font-weight:700;color:var(--fg);font-size:20px;margin:2px 0 6px;text-wrap:balance}
+.result p{margin:0 0 6px;max-width:65ch}
+.result .lesson{font-size:13.5px;color:var(--muted)}
+.result .lesson b{color:var(--fg)}
+
+details.code{background:var(--code-bg);color:var(--code-fg);border-radius:14px;overflow:hidden}
+details.code summary{cursor:pointer;padding:11px 14px;font-family:var(--f-mono);font-size:13px;color:var(--code-fg);list-style-position:inside}
+details.code pre{margin:0;padding:4px 16px 16px;overflow-x:auto;font-family:var(--f-mono);font-size:12.5px;line-height:1.55}
+.kw{color:var(--code-kw)} .st{color:var(--code-str)} .cm{color:var(--code-cm)}
+footer{color:var(--muted);font-size:12.5px;max-width:80ch}
+/* task picker */
+.tasks{display:flex;gap:8px;flex-wrap:wrap}
+.task{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel);flex:0 1 190px;min-width:0;text-align:left}
+@media (max-width:520px){.tasks{flex-wrap:nowrap}.task{flex:1 1 0;padding:8px 10px;font-size:13.5px}}
+#cfgs input:disabled+span{cursor:default}
+.task small{font-family:var(--f-mono);font-size:11.5px;font-weight:400;color:var(--muted)}
+.task[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.task[aria-pressed="true"] small{color:var(--accent)}
+.task .done{color:var(--good)}
+/* MCI title band */
+.hero{display:block;position:relative;border-radius:0 0 72px 0;background:linear-gradient(115deg,var(--mci) 0%,var(--mci-2) 55%,#2E73AE 100%);color:#fff;padding:26px 28px 30px;overflow:hidden}
+.hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px 28px;flex-wrap:wrap}
+.hero .eyebrow{color:#CFE0F1;font-family:var(--f-body);font-weight:600;font-size:12.5px}
+.hero h1{color:#fff;margin:6px 0 8px}
+.hero .lede{color:#E3EDF7}
+.hero .lede b{color:#fff}
+.mci-logo{width:132px;height:auto;flex:none}
+.photo{position:relative;margin:18px -28px 0;height:clamp(170px,27vw,330px);background:var(--mci) center/cover no-repeat}
+.photo::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,73,131,.35),rgba(0,73,131,0) 45%)}
+.photo .credit{position:absolute;left:8px;bottom:6px;font-size:10px;color:rgba(255,255,255,.85);z-index:1;letter-spacing:.02em}
+.byline{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 2px 0}
+.byline .who{color:var(--muted);font-size:14px}
+.hero .pill{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.28);color:#fff}
+.hero .pill b{color:#fff}
+.meta-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
+/* MCI footer bar */
+.mci-foot{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:linear-gradient(90deg,#014782 0%,#0A5394 55%,#5686AC 100%);color:#fff;border-radius:10px;padding:12px 18px;font-size:13px}
+.mci-foot img{width:56px;height:auto}
+.mci-foot span{opacity:.92}
+@media (max-width:520px){.hero{padding:20px 16px 22px;border-radius:0 0 40px 0}.photo{margin-inline:-16px}.mci-logo{width:96px}}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header class="hero">
+    <div class="hero-top">
+      <div>
+        <div class="eyebrow">Current Research Areas in Medical Technologies · Physical AI</div>
+        <h1 id="h1">Teach Quadro a backflip</h1>
+      </div>
+      <img class="mci-logo" alt="MCI Innsbruck, Austria" src="data:image/png;base64,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">
+    </div>
+  </header>
+  <div class="byline">
+    <span class="who">Marcel Naderer · Current Research Areas in Medical Technologies</span>
+    <div class="meta-row">
+      <span class="pill">Attempt <b id="attempt">0</b></span>
+      <span class="pill">Status <b id="status">untrained</b></span>
+    </div>
+  </div>
+
+  <nav class="tasks" id="tasks" aria-label="Choose a task"></nav>
+
+  <div class="grid">
+    <section class="cfgs" id="cfgs" aria-label="Environment configuration"></section>
+
+    <section class="monitor" aria-label="Simulation monitor">
+      <div class="screen">
+        <div class="screen-bar">
+          <span class="rec"><span class="dot" id="recdot"></span><span id="modeLbl">SIMULATION · Isaac Lab</span></span>
+          <span id="behLbl">waiting for training</span>
+        </div>
+        <div class="simwrap" id="simwrap"><canvas id="sim" aria-label="Animated view of the robot"></canvas><div class="ovl" id="ovl">untrained policy</div><div class="drag" id="dragHint" hidden>drag to rotate</div></div>
+      </div>
+      <div class="under">
+        <div class="curve-box">
+          <div class="lbl">Learning curve · reward per episode</div>
+          <canvas id="curve" aria-label="Learning curve"></canvas>
+        </div>
+        <div class="curve-box stats">
+          <div class="stat"><span>Parallel robots</span><b id="sEnvs">64</b></div>
+          <div class="stat"><span>Est. training time</span><b id="sTime">–</b></div>
+          <div class="stat"><span>Time budget</span><b>≈ 30 min (one break)</b></div>
+          <div class="stat"><span>Simulated time steps</span><b id="sTrials">–</b></div>
+        </div>
+      </div>
+      <div class="btnrow">
+        <button class="primary" id="trainBtn">Train in simulation</button>
+        <button id="deployBtn" disabled>Deploy to real robot</button>
+      </div>
+      <div class="result" id="result"></div>
+      <details class="code">
+        <summary>Your config as Isaac Lab-style Python (simplified)</summary>
+        <pre id="code"></pre>
+      </details>
+    </section>
+  </div>
+
+  <footer>Teaching game. The outcomes come from a rule table, not from real training, but each failure is one that really happens in RL research. Training times are rough illustrations. Class names follow Isaac Lab's manager-based environments; the function names in the code view are simplified.</footer>
+  <div class="mci-foot"><img alt="MCI" src="data:image/png;base64,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"><span>Current Research Areas in Medical Technologies &nbsp;|&nbsp; Innsbruck, Austria &nbsp;|&nbsp; www.mci.edu</span></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const PI=Math.PI, HS=0.76, HC=0.6, LIE=0.2, SH=0.3, STEPX=0.9;
+
+/* ======================= TASK DEFINITIONS ======================= */
+// option: {id,type:'check',label,sub,code} | {id,type:'radio',choices:[[value,label,sub,code]]}
+const C = (id,cls,name,what,opts,empty)=>({id,cls,name,what,opts,empty});
+const ENVS = {id:'envs',type:'radio',choices:[
+  ['1','1 robot','One simulated robot at a time'],
+  ['64','64 robots in parallel','A good laptop GPU'],
+  ['4096','4096 robots in parallel','A large GPU, typical for Isaac Lab']]};
+const ACTS = {id:'act',type:'radio',choices:[
+  ['joints','Joint position targets (12 leg joints)','Direct control of every hip and knee','joint_pos = JointPositionActionCfg(joint_names=[".*"])'],
+  ['vel','Walking velocity commands','Forward / sideways speed and turning, via the built-in walking controller','base_velocity = WalkingVelocityActionCfg()  # built-in walking controller']]};
+const O = {
+  joints:{id:'joints',type:'check',label:'Joint positions & velocities',sub:'Where its legs are, and how fast they move',code:['joint_pos = ObsTerm(func=mdp.joint_pos)','joint_vel = ObsTerm(func=mdp.joint_vel)']},
+  imu:{id:'imu',type:'check',label:'Body orientation & spin rate (IMU)',sub:'Which way is up, and how fast it is rotating',code:['base_orientation = ObsTerm(func=mdp.projected_gravity)','base_ang_vel = ObsTerm(func=mdp.base_ang_vel)']},
+  camera:{id:'camera',type:'check',label:'Camera image',sub:'What it sees in front of it',code:'camera_rgb = ObsTerm(func=mdp.image, params={"sensor": "front_cam"})'},
+  lastact:{id:'lastact',type:'check',label:'Previous action',sub:'What it commanded one step ago',code:'last_action = ObsTerm(func=mdp.last_action)'},
+};
+const T_TIME = {id:'timeout',type:'check',label:'Time limit',sub:'Stop each attempt after a few seconds',code:'time_out = DoneTerm(func=mdp.time_out, time_out=True)'};
+const T_FALL = {id:'fall',type:'check',label:'Body touches the ground',sub:'Stop the attempt as soon as the robot falls',code:'body_contact = DoneTerm(func=mdp.illegal_contact, params={"body_names": "body"})'};
+const E_RESET = {id:'reset',type:'check',label:'Reset pose at the start of each episode',sub:'Every attempt starts standing',code:'reset_base = EventTerm(func=mdp.reset_root_state, mode="reset")'};
+const E_RAND = {id:'rand',type:'check',label:'Randomize friction and mass',sub:'Domain randomization: every simulated robot is a bit different',code:['friction = EventTerm(func=mdp.randomize_friction, mode="startup", params={"range": (0.4, 1.2)})','mass = EventTerm(func=mdp.randomize_body_mass, mode="startup", params={"range": (-2.0, 2.0)})']};
+const E_PUSH = {id:'push',type:'check',label:'Random pushes',sub:'Small shoves during the attempt',code:'push = EventTerm(func=mdp.push_robot, mode="interval", interval_range_s=(1.0, 2.0))'};
+const R_ALIVE = {id:'alive',type:'check',label:'Alive bonus',sub:'+ points for every time step the episode keeps running',code:'alive_bonus = RewTerm(func=mdp.is_alive, weight=1.0)'};
+const R_ENERGY = {id:'energy',type:'check',label:'Motor effort penalty',sub:'− points for using a lot of torque',code:'torques = RewTerm(func=mdp.joint_torques_l2, weight=-0.0002)'};
+const S_GROUND = {id:'ground',type:'check',label:'Ground plane',sub:'A flat floor to stand on',code:'ground = TerrainImporterCfg(terrain_type="plane")'};
+const S_CONTACT = {id:'contact',type:'check',label:'Contact sensors on the feet',sub:'Lets the robot feel when a foot touches the ground',code:'feet_contact = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/.*_foot")'};
+
+const TASKS = {
+ walk:{
+  label:'Walk forward', level:'easy', h1:'Teach Quadro to walk',
+  intro:'Walking is the classic first task in Isaac Lab. The robot should walk at whatever speed you command.',
+  times:{'1':1600,'64':25,'4096':0.4},
+  cfg:[
+   C('scene','MySceneCfg','Scene','Robot, ground, objects, terrain, sensors',[S_GROUND,S_CONTACT]),
+   C('actions','ActionsCfg','Actions','What the robot can control',[ACTS]),
+   C('obs','ObservationsCfg','Observations','What information the robot receives',[O.joints,O.imu,
+     {id:'cmdobs',type:'check',label:'Commanded speed',sub:'The target speed it should walk at',code:'velocity_cmd = ObsTerm(func=mdp.generated_commands, params={"command_name": "base_velocity"})'},O.camera,O.lastact]),
+   C('rew','RewardsCfg','Rewards','What behavior should be rewarded',[R_ALIVE,
+     {id:'dist',type:'check',label:'Distance travelled forward',sub:'+ points for every meter it moves forward',code:'forward_progress = RewTerm(func=mdp.base_lin_vel_x, weight=2.0)'},
+     {id:'track',type:'check',label:'Match the commanded speed',sub:'+ points when its speed matches the target speed',code:'track_lin_vel = RewTerm(func=mdp.track_lin_vel_xy_exp, weight=1.5)'},
+     {id:'airtime',type:'check',label:'Lift the feet (air time)',sub:'+ points for proper steps instead of dragging the feet',code:'feet_air_time = RewTerm(func=mdp.feet_air_time, weight=0.25)'},R_ENERGY],'no rewards'),
+   C('term','TerminationsCfg','Terminations','When an episode should end',[T_TIME,T_FALL],'episodes never end'),
+   C('events','EventCfg','Events','Resets, randomization, disturbances',[E_RESET,E_RAND,E_PUSH],'no events'),
+   C('cmd','CommandsCfg','Commands','Target velocities, positions, goals',[{id:'cmd',type:'radio',choices:[
+     ['none','No command','No target is given','# no command'],
+     ['vel','Random target speeds (0–1.5 m/s)','A new target speed every few seconds','base_velocity = UniformVelocityCommandCfg(lin_vel_x=(0.0, 1.5), resampling_time_range=(4.0, 4.0))'],
+     ['fixed','Always 1 m/s','The same target speed every time','base_velocity = UniformVelocityCommandCfg(lin_vel_x=(1.0, 1.0))']]}]),
+   C('curr','CurriculumCfg','Curriculum','How the task difficulty increases',[{id:'curr',type:'check',label:'Start on flat ground, add rough terrain later',sub:'Terrain gets harder as the robot improves',code:'terrain_levels = CurrTerm(func=mdp.terrain_levels_vel)'}],'no curriculum'),
+   C('env','MyEnvCfg','Environment','Combines everything and sets simulation parameters',[ENVS]),
+  ],
+  defaults:{ground:true,contact:false,act:'joints',joints:true,imu:true,cmdobs:false,camera:false,lastact:true,alive:true,dist:true,track:false,airtime:false,energy:false,timeout:true,fall:false,reset:true,rand:false,push:false,cmd:'none',curr:false,envs:'64'},
+ },
+ climb:{
+  label:'Climb onto a step', level:'medium', h1:'Teach Quadro to climb a step',
+  intro:'A 30 cm step stands in front of the robot. It should walk to the target position on top and get there without hurting itself.',
+  times:{'1':60000,'64':940,'4096':15},
+  cfg:[
+   C('scene','MySceneCfg','Scene','Robot, ground, objects, terrain, sensors',[S_GROUND,
+     {id:'step',type:'check',label:'Step (30 cm high)',sub:'The obstacle to climb',code:'step = RigidObjectCfg(spawn=sim_utils.CuboidCfg(size=(3.6, 2.4, 0.3)))'},S_CONTACT,
+     {id:'scanner',type:'check',label:'Height scanner',sub:'Measures the terrain height around the robot (like a downward lidar)',code:'height_scanner = RayCasterCfg(pattern_cfg=GridPatternCfg(size=(1.6, 1.0)))'}]),
+   C('actions','ActionsCfg','Actions','What the robot can control',[ACTS]),
+   C('obs','ObservationsCfg','Observations','What information the robot receives',[O.joints,O.imu,
+     {id:'cmdobs',type:'check',label:'Target position',sub:'Where the goal is, relative to the robot',code:'goal_pos = ObsTerm(func=mdp.generated_commands, params={"command_name": "goal"})'},
+     {id:'height',type:'check',label:'Terrain heights (from the height scanner)',sub:'How high the ground is in front of it',code:'height_scan = ObsTerm(func=mdp.height_scan, params={"sensor_cfg": "height_scanner"})'},O.camera,O.lastact]),
+   C('rew','RewardsCfg','Rewards','What behavior should be rewarded',[R_ALIVE,
+     {id:'goal',type:'check',label:'Get closer to the target',sub:'+ points for every step towards the goal on top',code:'goal_progress = RewTerm(func=mdp.position_tracking, weight=2.0)'},
+     {id:'up',type:'check',label:'Body height',sub:'+ points for having the body high up',code:'base_height = RewTerm(func=mdp.base_height, weight=1.0)'},
+     {id:'collision',type:'check',label:'Knee and shin collision penalty',sub:'− points when knees or shins hit the step edge',code:'undesired_contacts = RewTerm(func=mdp.undesired_contacts, weight=-1.0)'},R_ENERGY],'no rewards'),
+   C('term','TerminationsCfg','Terminations','When an episode should end',[T_TIME,T_FALL],'episodes never end'),
+   C('events','EventCfg','Events','Resets, randomization, disturbances',[E_RESET,
+     {id:'stepvar',type:'check',label:'Randomize the step height (25–35 cm)',sub:'Every simulated step is a bit different',code:'step_height = EventTerm(func=mdp.randomize_step_height, mode="reset", params={"range": (0.25, 0.35)})'},E_RAND,E_PUSH],'no events'),
+   C('cmd','CommandsCfg','Commands','Target velocities, positions, goals',[{id:'cmd',type:'radio',choices:[
+     ['none','No command','No goal is given','# no command'],
+     ['goal','Target position on top of the step','“Go to this point”','goal = UniformPose2dCommandCfg(ranges=Ranges(pos_x=(2.0, 3.0)))'],
+     ['walk','Walk forward at 1 m/s','A velocity target, as for walking','base_velocity = UniformVelocityCommandCfg(lin_vel_x=(1.0, 1.0))']]}]),
+   C('curr','CurriculumCfg','Curriculum','How the task difficulty increases',[{id:'curr',type:'check',label:'Start with low steps (5 cm), raise them as it improves',sub:'Like learning stairs one small step at a time',code:'step_levels = CurrTerm(func=mdp.terrain_levels_vel)'}],'no curriculum'),
+   C('env','MyEnvCfg','Environment','Combines everything and sets simulation parameters',[ENVS]),
+  ],
+  defaults:{ground:true,step:true,contact:true,scanner:false,act:'joints',joints:true,imu:true,cmdobs:true,height:false,camera:false,lastact:true,alive:true,goal:true,up:true,collision:false,energy:false,timeout:true,fall:true,reset:true,stepvar:false,rand:false,push:false,cmd:'none',curr:false,envs:'4096'},
+ },
+ flip:{
+  label:'Backflip', level:'hard', h1:'Teach Quadro a backflip',
+  intro:'The robot should jump, rotate backwards once and land on its feet.',
+  times:{'1':86400,'64':1560,'4096':22},
+  cfg:[
+   C('scene','MySceneCfg','Scene','Robot, ground, objects, terrain, sensors',[{...S_GROUND,sub:'A flat floor to stand and land on'},S_CONTACT]),
+   C('actions','ActionsCfg','Actions','What the robot can control',[ACTS]),
+   C('obs','ObservationsCfg','Observations','What information the robot receives',[O.joints,O.imu,O.camera,O.lastact]),
+   C('rew','RewardsCfg','Rewards','What behavior should be rewarded',[R_ALIVE,
+     {id:'height',type:'check',label:'Jump height',sub:'+ points for lifting the body high',code:'base_height = RewTerm(func=mdp.base_height, weight=2.0)'},
+     {id:'rot',type:'check',label:'Backward rotation',sub:'+ points for rotating the body backwards',code:'backward_pitch = RewTerm(func=mdp.backward_pitch_rate, weight=1.5)'},
+     {id:'land',type:'check',label:'Upright landing on all four feet',sub:'+ points for landing feet first, body level',code:'upright_landing = RewTerm(func=mdp.upright_feet_landing, weight=5.0)'},R_ENERGY],'no rewards'),
+   C('term','TerminationsCfg','Terminations','When an episode should end',[T_TIME,T_FALL],'episodes never end'),
+   C('events','EventCfg','Events','Resets, randomization, disturbances',[E_RESET,E_RAND,E_PUSH],'no events'),
+   C('cmd','CommandsCfg','Commands','Target velocities, positions, goals',[{id:'cmd',type:'radio',choices:[
+     ['none','No command','The robot flips whenever it can','# no command'],
+     ['trigger','“Flip now” command','The robot flips only when told to','flip = FlipTriggerCommandCfg(resampling_time_range=(2.0, 4.0))'],
+     ['walk','Walk forward at 1 m/s','A velocity target, as for a walking task','base_velocity = UniformVelocityCommandCfg(lin_vel_x=(1.0, 1.0))']]}]),
+   C('curr','CurriculumCfg','Curriculum','How the task difficulty increases',[{id:'curr',type:'check',label:'Start easy: small jumps first, then demand more rotation',sub:'Like learning a flip on a trampoline first',code:'flip_rotation = CurrTerm(func=mdp.increase_required_rotation, params={"start": 0.5, "end": 6.28})'}],'no curriculum'),
+   C('env','MyEnvCfg','Environment','Combines everything and sets simulation parameters',[ENVS]),
+  ],
+  defaults:{ground:true,contact:false,act:'joints',joints:true,imu:false,camera:false,lastact:true,alive:true,height:true,rot:false,land:false,energy:false,timeout:true,fall:false,reset:true,rand:false,push:false,cmd:'none',curr:false,envs:'64'},
+ },
+};
+const ORDER=['walk','climb','flip'];
+
+/* ======================= STATE ======================= */
+let TASK='walk';
+const STATE={}; ORDER.forEach(k=>STATE[k]={S:Object.assign({},TASKS[k].defaults),attempt:0,simPassed:false,last:null,realDone:false});
+let S=STATE[TASK].S, flagged=null;
+const R=(beh,kind,title,text,lesson,card,curve)=>({beh,kind,title,text,lesson,card,curve});
+
+/* ======================= TIME MODEL (illustrative) ======================= */
+function trainTime(){ return TASKS[TASK].times[S.envs]*(S.camera?4:1); }
+function fmtTime(m){ if(m<1) return '< 1 min'; if(m<90) return '≈ '+Math.round(m)+' min'; if(m<60*48) return '≈ '+Math.round(m/60)+' hours'; return '≈ '+Math.round(m/60/24)+' days'; }
+function budgetFail(card,beh,curve){
+  const t=trainTime();
+  return R(beh,'warn','Time\'s up – training wasn\'t finished',
+    `Training would need ${fmtTime(t)} with ${S.envs==='1'?'one robot':S.envs+' robots'}${S.camera?' – and the camera makes every step 4× slower':''}. Within the break it only got this far.`,
+    '<b>Environment:</b> RL needs millions of trials. Thousands of robots in parallel on a GPU make that possible – real robots can\'t.'+(S.camera?(TASK==='climb'&&!S.height?' The camera does let it see the step, but images are 4× slower to simulate – a height scanner gives the same terrain information much cheaper.':' The camera isn\'t needed for this task.'):''),card,curve);
+}
+
+/* ======================= RULE TABLES ======================= */
+const SIM={}, REAL={};
+SIM.walk=()=>{
+  if(!S.ground) return R('void','bad','It falls into the void','There is no floor in the scene, so there is nothing to walk on.','<b>Scene:</b> the simulation only contains what you put into it.','scene',0.02);
+  if(S.act==='vel') return R('walkgood','warn','It walks – but nothing was learned',
+    'Walking commands go to the robot\'s built-in walking controller. That controller already knows how to walk, so your policy just passes on a speed.',
+    '<b>Actions:</b> to learn a motion yourself, the policy needs direct joint control.','actions',0.6);
+  if(!S.joints) return R('flail','bad','It twitches randomly','Without joint positions and velocities, it doesn\'t know where its legs are.','<b>Observations:</b> a policy can only react to what it observes.','obs',0.06);
+  if(!S.reset) return R('stuck','bad','It never gets a second chance','Episodes don\'t reset, so after the first fall every new attempt starts on the floor.','<b>Events:</b> RL needs many clean attempts.','events',0.04);
+  if(!S.timeout) return R('stuck','bad','Training stalls','Without a time limit, a stuck episode runs forever.','<b>Terminations:</b> every episode needs an end.','term',0.05);
+  if(!S.track && !S.dist) return S.alive
+    ? R('stand','warn','It just stands there','The only reward is the alive bonus. Standing still is the safest way to collect it.','<b>Rewards:</b> the robot does what you reward, not what you meant.','rew',0.3)
+    : R('flail','bad','It learns nothing','With no reward at all, there is nothing to learn from.','<b>Rewards:</b> no reward, no learning.','rew',0.02);
+  if(S.dist) return R('lunge','warn','Reward hacking! It throws itself forward',
+    'More distance = more reward, so it learned to gallop as fast as possible and dive forward. Falling over at full speed still scores well.',
+    '<b>Rewards:</b> reward matching a commanded speed instead of raw distance. You want control, not maximum speed.','rew',0.78);
+  if(S.cmd==='none') return R('stand','warn','It stands perfectly still',
+    'The reward says “match the commanded speed”. With no command, the target speed is 0 m/s, so standing still is perfect.',
+    '<b>Commands:</b> a tracking reward needs something to track.','cmd',0.7);
+  if(!S.cmdobs) return R('walkrandom','bad','It walks at random speeds',
+    'You give it a target speed, but it can\'t see that target. It can only guess, and it guesses wrong all the time.',
+    '<b>Observations:</b> the robot has to observe its own goal.','obs',0.35);
+  if(!S.fall) return R('crawl','warn','It crawls on its belly',
+    'Crawling moves it forward at roughly the right speed and it can never fall. Since lying on the floor doesn\'t end the episode, this is a cheap solution.',
+    '<b>Terminations:</b> end the episode when the body touches the ground.','term',0.62);
+  if(!S.imu) return R('stumble','bad','It walks a few steps, then falls over','Without the IMU it can\'t feel when it starts to tip over.','<b>Observations:</b> balance needs a sense of orientation.','obs',0.4);
+  if(!S.airtime) return R('shuffle','warn','It shuffles and drags its feet',
+    'It moves at the right speed, but with tiny dragging steps. In simulation that works – on a real floor it would trip over every cable.',
+    '<b>Rewards:</b> add a reward for proper steps (feet air time).','rew',0.6);
+  if(!S.contact) return R('shuffle','warn','It still drags its feet','The air-time reward needs to know when a foot is off the ground. Without contact sensors it never fires.','<b>Scene:</b> rewards can only use what the sensors measure.','scene',0.6);
+  if(trainTime()>30) return budgetFail(S.camera&&S.envs==='4096'?'obs':'env','shuffle',0.4);
+  return R('walkgood','good','It walks!','It tracks the commanded speed with a clean trot. Now test it on the real robot.','<b>Simulation:</b> it worked here – but simulation is never a perfect copy of reality.',null,0.95);
+};
+REAL.walk=()=>{
+  if(!S.rand) return R('walkslip','bad','Real robot: it slips and falls','The real floor is more slippery and the real robot a bit heavier than in simulation. The policy only knows one perfect world.','<b>Sim-to-real gap:</b> randomize friction and mass in Events.','events');
+  if(S.cmd==='fixed') return R('walkgood','warn','It walks – but only at exactly 1 m/s','It never learned to slow down or stop. In a hospital corridor that\'s not usable.','<b>Commands:</b> train with a range of target speeds, so the robot can follow any speed you ask for.','cmd');
+  const ex=[]; if(!S.push) ex.push('random pushes would make it more robust'); if(!S.energy) ex.push('a motor effort penalty would make it smoother and quieter');
+  return R('walkgood','good','It walks on the real robot!','Trained only in simulation, it walks in the real lab. Next challenge: climb a step.',ex.length?'<b>Bonus:</b> '+ex.join('; ')+'.':'<b>Perfect config.</b> Note: the curriculum wasn\'t even needed on flat ground – not every task needs one.',null);
+};
+SIM.climb=()=>{
+  if(!S.ground) return R('void','bad','It falls into the void','There is no floor in the scene.','<b>Scene:</b> the simulation only contains what you put into it.','scene',0.02);
+  if(!S.step) return R('walkgood','warn','Nothing to climb','There is no step in the scene, so it just walks to the target on flat ground. In the real world, it has never seen a step.','<b>Scene:</b> train with the obstacles the robot will meet.','scene',0.9);
+  if(S.act==='vel') return R('bump','bad','It bumps into the step','The built-in walking controller can\'t lift the legs high enough for a 30 cm step.','<b>Actions:</b> climbing needs direct joint control.','actions',0.25);
+  if(!S.joints) return R('flail','bad','It twitches randomly','Without joint positions and velocities, it doesn\'t know where its legs are.','<b>Observations:</b> a policy can only react to what it observes.','obs',0.06);
+  if(!S.reset) return R('stuck','bad','It never gets a second chance','Episodes don\'t reset, so every new attempt starts wherever the last one ended.','<b>Events:</b> RL needs many clean attempts.','events',0.04);
+  if(!S.timeout) return R('stuck','bad','Training stalls','Without a time limit, a stuck episode runs forever.','<b>Terminations:</b> every episode needs an end.','term',0.05);
+  if(!S.goal && !S.up) return S.alive
+    ? R('stand','warn','It just stands there','The only reward is the alive bonus. Standing still is the safest way to collect it.','<b>Rewards:</b> the robot does what you reward, not what you meant.','rew',0.3)
+    : R('flail','bad','It learns nothing','With no reward at all, there is nothing to learn from.','<b>Rewards:</b> no reward, no learning.','rew',0.02);
+  if(S.up) return R('hop','warn','Reward hacking! It jumps in place',
+    'You reward a high body. Jumping up and down in front of the step is much easier than climbing it – and it earns the same reward.',
+    '<b>Rewards:</b> reward progress towards the goal, not the body height.','rew',0.7);
+  if(S.cmd==='none') return R('stand','warn','It doesn\'t know where to go','The reward is “get closer to the target”, but no target is given. It stands and waits.','<b>Commands:</b> give it a goal position on top of the step.','cmd',0.2);
+  if(S.cmd==='walk') return R('bump','bad','It walks into the step','The command says “walk at 1 m/s”, so it marches into the step instead of slowing down to climb.','<b>Commands:</b> a position goal fits this task better than a fixed speed.','cmd',0.3);
+  if(!S.cmdobs) return R('walkrandom','bad','It wanders around','It is rewarded for reaching the target, but it can\'t observe where the target is.','<b>Observations:</b> the robot has to observe its own goal.','obs',0.3);
+  if(!S.fall) return R('crawl','warn','It flops onto the step belly-first','Since lying on the ground doesn\'t end the episode, it learned to throw its body onto the step and drag itself up.','<b>Terminations:</b> end the episode when the body touches the ground.','term',0.6);
+  if(!S.height && !S.camera) return R('bump','bad','It walks blindly into the step',
+    'It knows where the goal is, but not that there is a step in the way. It only notices the step when its legs hit it.',
+    '<b>Observations:</b> add terrain heights (and a height scanner in the Scene), so it can “see” the step before it reaches it.','obs',0.35);
+  if(S.height && !S.scanner) return R('bump','bad','The height observation is empty','You observe terrain heights, but there is no height scanner in the scene that could measure them.','<b>Scene:</b> every observation needs a sensor that produces it.','scene',0.35);
+  if(!S.imu) return R('stumble','bad','It loses balance','Without the IMU it can\'t feel when it starts to tip over.','<b>Observations:</b> balance needs a sense of orientation.','obs',0.4);
+  if(!S.curr) return R('giveup','warn','It gives up in front of the step',
+    'A 30 cm step from the very first attempt is too hard. Every try failed, so it learned that waiting in front of the step is the best it can do.',
+    '<b>Curriculum:</b> start with low steps and raise them as the robot improves.','curr',0.4);
+  if(trainTime()>30) return budgetFail(S.camera&&S.envs==='4096'?'obs':'env','giveup',0.4);
+  if(!S.collision) return R('scramble','warn','It climbs – using its knees',
+    'It gets on top, but bangs its knees and shins on the edge and drags itself up. In simulation nothing breaks. A real robot would damage its legs.',
+    '<b>Rewards:</b> penalize knee and shin contacts, so it learns to lift the feet over the edge.','rew',0.8);
+  return R('climb','good','It climbs the step!','Clean steps up and over the edge. Now the real test: the step in the lab.','<b>Simulation:</b> it worked here – but simulation is never a perfect copy of reality.',null,0.95);
+};
+REAL.climb=()=>{
+  if(!S.stepvar) return R('climbslip','bad','Real robot: it catches the edge and falls back',
+    'The real step is 2 cm higher than the one in simulation. The policy lifts its feet exactly 30 cm – and catches the edge.',
+    '<b>Sim-to-real gap:</b> randomize the step height in Events, so the policy works for many slightly different steps.','events');
+  const ex=[]; if(!S.rand) ex.push('randomizing friction and mass would make it work on more floors'); if(!S.push) ex.push('random pushes would make it more robust'); if(!S.energy) ex.push('a motor effort penalty would make it smoother');
+  return R('climb','good','It climbs the real step!','Trained in simulation, it climbs the real step. That\'s the same recipe used for stairs in hospitals and homes.',ex.length?'<b>Bonus:</b> '+ex.join('; ')+'.':'<b>Perfect config.</b>',null);
+};
+SIM.flip=()=>{
+  if(!S.ground) return R('void','bad','It falls into the void','There is no floor in the scene, so there is nothing to push off from.','<b>Scene:</b> the simulation only contains what you put into it.','scene',0.02);
+  if(S.act==='vel') return R('walkflip','bad','It walks around nicely – and never leaves the ground','Walking commands go through a controller built for walking. It can\'t produce the explosive push a flip needs.','<b>Actions:</b> the action space limits what the policy can ever learn.','actions',0.25);
+  if(!S.joints) return R('flail','bad','It twitches randomly','Without joint positions and velocities, the robot doesn\'t know where its legs are.','<b>Observations:</b> a policy can only react to what it observes.','obs',0.06);
+  if(!S.reset) return R('stuck','bad','It never gets a second chance','Episodes don\'t reset, so after the first fall every new attempt starts lying on the floor.','<b>Events:</b> RL needs many clean attempts.','events',0.04);
+  if(!S.timeout) return R('stuck','bad','Training stalls','Without a time limit, an episode stuck on its back can run forever.','<b>Terminations:</b> every episode needs an end.','term',0.05);
+  if(!S.height && !S.rot && !S.land) return S.alive
+    ? R('stand','warn','It just stands there','The only reward is the alive bonus. Standing still is the safest way to collect it.','<b>Rewards:</b> the robot does what you reward, not what you meant.','rew',0.3)
+    : R('flail','bad','It learns nothing','With no reward at all, there is nothing to learn from.','<b>Rewards:</b> no reward, no learning.','rew',0.02);
+  if(S.rot && !S.fall) return R('lieback','warn','Reward hacking! It rolls onto its back and stays there',
+    'Rolling backwards also counts as “backward rotation”, and lying on its back is safe. Since falling doesn\'t end the episode, it collects reward on the floor. Look at the learning curve: high reward, wrong behavior.',
+    '<b>Terminations:</b> end the episode when the body hits the ground, so cheating stops paying off.','term',0.82);
+  if(!S.rot) return R('hop','warn','It jumps straight up – no flip','You reward height, so it learned to jump high. Nothing asks it to rotate.','<b>Rewards:</b> every part of the goal needs its own reward term.','rew',0.42);
+  if(!S.height) return R('tip','bad','It tips over backwards','It tries to rotate, but nothing rewards getting into the air first.','<b>Rewards:</b> a flip needs height and rotation together.','rew',0.3);
+  if(!S.imu) return R('overrotate','bad','It spins too far and lands on its face','Without the IMU, the robot can\'t feel how far it has already rotated.','<b>Observations:</b> a flip needs a sense of balance, like your inner ear.','obs',0.45);
+  if(!S.land) return R('crash','bad','Great flip – terrible landing','It rotates nicely, but crashes because nothing rewards a clean landing.','<b>Rewards:</b> reward the whole task, including the end.','rew',0.55);
+  if(!S.contact) return R('crash','bad','It can\'t feel its feet','The landing reward needs to know when the feet touch the ground. Without contact sensors, it never fires.','<b>Scene:</b> rewards can only use what the sensors measure.','scene',0.52);
+  if(S.cmd==='walk') return R('smallhop','warn','Two goals fight each other','The command says “walk forward” while the rewards say “flip”. The result is a half-hearted hop.','<b>Commands:</b> the command has to match the task.','cmd',0.4);
+  if(trainTime()>30) return budgetFail(S.camera&&S.envs==='4096'?'obs':'env','smallhop',0.35);
+  if(!S.curr) return R('smallhop','warn','Stuck at small hops','A full flip is too hard to discover by chance, so it settled for small, safe hops.','<b>Curriculum:</b> start easy, then increase the difficulty step by step.','curr',0.38);
+  return R('flip','good','Backflip learned in simulation!','Every piece fits together. Now the real test: press <b>Deploy to real robot</b>.','<b>Simulation:</b> it worked here – but simulation is never a perfect copy of reality.',null,0.95);
+};
+REAL.flip=()=>{
+  if(!S.rand) return R('realfail','bad','Real robot: it slips on landing','The real floor and the real robot are slightly different from the simulation.','<b>Sim-to-real gap:</b> randomize friction and mass in Events.','events');
+  if(S.cmd!=='trigger') return R('flip','warn','It works – but it flips whenever it wants','Without a command, the robot decides on its own when to flip. Next to people, that\'s a safety problem.','<b>Commands:</b> a real robot must do the motion when asked, not at random.','cmd');
+  const ex=[]; if(!S.push) ex.push('random pushes would make it more robust'); if(!S.energy) ex.push('a motor effort penalty would make it smoother');
+  return R('flip','good','Backflip on the real robot!','Trained entirely in simulation, transferred to reality. That\'s how Spot, Atlas and many others learn today.',ex.length?'<b>Bonus:</b> '+ex.join('; ')+'.':'<b>Perfect config.</b>',null);
+};
+
+/* ======================= UI ======================= */
+const cfgRoot=document.getElementById('cfgs');
+function renderTasks(){
+  const nav=document.getElementById('tasks'); nav.innerHTML='';
+  ORDER.forEach(k=>{
+    const b=document.createElement('button'); b.className='task'; b.type='button';
+    b.setAttribute('aria-pressed',k===TASK?'true':'false');
+    b.innerHTML=`${TASKS[k].label}<small>${STATE[k].realDone?'<span class="done">✓ done on real robot</span>':TASKS[k].level}</small>`;
+    b.onclick=()=>switchTask(k); nav.appendChild(b);
+  });
+}
+function renderCfg(){
+  cfgRoot.innerHTML='';
+  TASKS[TASK].cfg.forEach(c=>{
+    const card=document.createElement('article'); card.className='card'; card.id='card-'+c.id;
+    let h=`<div class="card-h"><h2>${c.name}</h2><span class="cls">${c.cls}</span></div><p class="what">${c.what}</p><div class="opts">`;
+    c.opts.forEach(o=>{
+      if(o.type==='check') h+=`<label class="opt"><input type="checkbox" id="o-${TASK}-${o.id}" data-k="${o.id}" ${S[o.id]?'checked':''}><span>${o.label}<small>${o.sub}</small></span></label>`;
+      else o.choices.forEach(([v,l,sub])=>{h+=`<label class="opt"><input type="radio" name="r-${TASK}-${o.id}" id="o-${TASK}-${o.id}-${v}" data-k="${o.id}" value="${v}" ${S[o.id]===v?'checked':''}><span>${l}<small>${sub}</small></span></label>`;});
+    });
+    card.innerHTML=h+'</div>'; cfgRoot.appendChild(card);
+  });
+  const act=document.createElement('div'); act.className='cfg-actions';
+  act.innerHTML=`<button class="primary" id="trainBtn2">Train in simulation</button><button class="ghost" id="resetBtn">Back to first guess</button>`;
+  cfgRoot.appendChild(act);
+  cfgRoot.querySelectorAll('input').forEach(inp=>inp.addEventListener('change',e=>{
+    const k=e.target.dataset.k; S[k]=e.target.type==='checkbox'?e.target.checked:e.target.value; onChange();
+  }));
+  document.getElementById('trainBtn2').onclick=train;
+  document.getElementById('resetBtn').onclick=()=>{STATE[TASK].S=S=Object.assign({},TASKS[TASK].defaults); renderCfg(); onChange();};
+}
+function onChange(){
+  const st=STATE[TASK];
+  if(st.simPassed){st.simPassed=false; deployBtn.disabled=true; setStatus('changed – retrain');}
+  updateStats(); renderCode(); setFlag(null);
+}
+function setFlag(id){ if(flagged) document.getElementById('card-'+flagged)?.classList.remove('flag'); flagged=id; if(id) document.getElementById('card-'+id)?.classList.add('flag'); }
+function updateStats(){ document.getElementById('sEnvs').textContent=S.envs; document.getElementById('sTime').textContent=fmtTime(trainTime()); }
+const trainBtn=document.getElementById('trainBtn'), deployBtn=document.getElementById('deployBtn');
+trainBtn.onclick=()=>train(); deployBtn.onclick=deploy;
+function setStatus(t){document.getElementById('status').textContent=t;}
+function showResult(r,tagTxt){
+  const el=document.getElementById('result');
+  el.className='result '+r.kind;
+  el.innerHTML=`<div class="tag">${tagTxt}</div><h3>${r.title}</h3><p>${r.text}</p>${r.lesson?`<p class="lesson">${r.lesson}</p>`:''}`+(r.card?`<button class="hint-btn" id="hintBtn">Show me where to look</button>`:'');
+  if(r.card) document.getElementById('hintBtn').onclick=()=>{setFlag(r.card);document.getElementById('card-'+r.card).scrollIntoView({behavior:'smooth',block:'center'});};
+}
+function showIntro(){
+  const t=TASKS[TASK];
+  showResult({kind:'',title:'Start with this first guess',text:t.intro+' The config on the left is a typical first attempt. Press <b>Train in simulation</b>, then fix one thing at a time.',lesson:'',card:null},'Task · '+t.label);
+}
+function switchTask(k){
+  if(training) return;
+  TASK=k; S=STATE[k].S; setFlag(null);
+  document.getElementById('h1').textContent=TASKS[k].h1;
+  document.getElementById('attempt').textContent=STATE[k].attempt;
+  renderTasks(); renderCfg(); updateStats(); renderCode();
+  deployBtn.disabled=!STATE[k].simPassed;
+  const last=STATE[k].last;
+  realMode=!!(last&&last.real);
+  document.getElementById('recdot').className='dot'+(last?(realMode?' real':' live'):'');
+  document.getElementById('modeLbl').textContent=realMode?'REAL ROBOT · lab floor':'SIMULATION · Isaac Lab';
+  document.getElementById('sTrials').textContent=last?last.steps:'–';
+  if(last){ showResult(last.r,last.tag); setBehavior(last.r.beh); startCurve(last.r.curve??null,last.r.beh==='lieback'||last.r.beh==='lunge'||last.r.beh==='hop',true);
+    document.getElementById('behLbl').textContent=realMode?'running policy on hardware':'playing learned policy';
+    setStatus(STATE[k].realDone?'real robot ✓':(STATE[k].simPassed?'works in sim':'needs work')); }
+  else { showIntro(); setBehavior('idle'); curveTarget=null; setStatus('untrained'); document.getElementById('behLbl').textContent='waiting for training'; }
+  if(R3) R3.themeTick=0;
+  if(R3) R3.snap=true;
+}
+let training=false;
+function train(){
+  if(training) return;
+  const st=STATE[TASK];
+  training=true; lockUI(true); st.attempt++;
+  if(window.innerWidth<=900){const m=document.querySelector('.monitor'); const r0=m.getBoundingClientRect(); if(r0.top<0||r0.top>window.innerHeight*0.5) m.scrollIntoView({behavior:reduced()?'auto':'smooth',block:'start'});} document.getElementById('attempt').textContent=st.attempt;
+  setFlag(null); st.simPassed=false; deployBtn.disabled=true;
+  const r=SIM[TASK]();
+  realMode=false; document.getElementById('recdot').className='dot live'; document.getElementById('modeLbl').textContent='SIMULATION · Isaac Lab';
+  setStatus('training…'); document.getElementById('behLbl').textContent='training '+S.envs+' robots…';
+  const steps=Math.round(trainTime()*60*50*Number(S.envs)/(S.camera?4:1));
+  startCurve(r.curve, r.beh==='lieback'||r.beh==='lunge'||(TASK==='climb'&&r.beh==='hop'));
+  setBehavior('train');
+  const dur=reduced()?300:2600, task=TASK;
+  setTimeout(()=>{
+    training=false; lockUI(false); if(task!==TASK) return;
+    document.getElementById('sTrials').textContent=steps>1e6?(steps/1e6).toFixed(1)+' million':steps.toLocaleString('en');
+    setBehavior(r.beh); document.getElementById('behLbl').textContent='playing learned policy';
+    const tag='Attempt '+st.attempt+' · simulation';
+    showResult(r,tag); st.last={r,tag,real:false,steps:document.getElementById('sTrials').textContent};
+    st.simPassed=r.kind==='good'; deployBtn.disabled=!st.simPassed;
+    setStatus(st.simPassed?'works in sim':'needs work');
+    if(R3) R3.snap=true;
+  },dur);
+}
+function deploy(){
+  const r=REAL[TASK]();
+  realMode=true; document.getElementById('recdot').className='dot real';
+  document.getElementById('modeLbl').textContent='REAL ROBOT · lab floor';
+  document.getElementById('behLbl').textContent='running policy on hardware';
+  setBehavior(r.beh); const tag='Deployment · real robot'; showResult(r,tag); STATE[TASK].last={r:Object.assign({},r,{curve:0.95}),tag,real:true,steps:document.getElementById('sTrials').textContent};
+  if(r.kind==='good'){STATE[TASK].realDone=true; renderTasks();}
+  setStatus(r.kind==='good'?'real robot ✓':(r.kind==='warn'?'works, not usable':'failed on real robot'));
+  if(R3){R3.themeTick=0;R3.snap=true;}
+}
+const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+function lockUI(on){
+  document.querySelectorAll('#cfgs input, #resetBtn, #tasks button').forEach(el=>el.disabled=on);
+  [trainBtn, document.getElementById('trainBtn2')].forEach(bn=>{ if(!bn) return; bn.disabled=on; bn.textContent=on?'Training…':'Train in simulation'; });
+  cfgRoot.style.opacity=on?'.6':''; 
+}
+
+/* ======================= CODE VIEW ======================= */
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;');}
+function hl(line){
+  let s=esc(line);
+  s=s.replace(/(#.*)$/,'<span class="cm">$1</span>');
+  s=s.replace(/"([^"]*)"/g,'<span class="st">"$1"</span>');
+  return s;
+}
+function renderCode(){
+  const L=[], base={scene:'InteractiveSceneCfg',env:'ManagerBasedRLEnvCfg'};
+  TASKS[TASK].cfg.forEach(c=>{
+    if(c.id==='env') return;
+    L.push('',`<span class="kw">@configclass</span>`,`<span class="kw">class</span> ${c.cls}${base[c.id]?'('+base[c.id]+')':''}:`);
+    let ind='    ';
+    if(c.id==='scene') L.push('    robot = QUADRO_CFG  # our quadruped robot');
+    if(c.id==='obs'){L.push(`    <span class="kw">class</span> PolicyCfg(ObsGroup):`); ind='        ';}
+    let n=0;
+    c.opts.forEach(o=>{
+      let code=null;
+      if(o.type==='check'){ if(S[o.id]) code=o.code; }
+      else { const ch=o.choices.find(x=>x[0]===S[o.id]); code=ch&&ch[3]; }
+      if(code){ (Array.isArray(code)?code:[code]).forEach(l=>{L.push(ind+hl(l)); n++;}); }
+    });
+    if(!n) L.push(ind+`<span class="cm"># ${c.empty||'nothing selected'}</span>`);
+  });
+  L.push('',`<span class="kw">@configclass</span>`,`<span class="kw">class</span> MyEnvCfg(ManagerBasedRLEnvCfg):`);
+  L.push(`    scene = MySceneCfg(num_envs=${S.envs}, env_spacing=2.5)`,'    actions = ActionsCfg()','    observations = ObservationsCfg()','    rewards = RewardsCfg()','    terminations = TerminationsCfg()','    events = EventCfg()','    commands = CommandsCfg()','    curriculum = CurriculumCfg()',
+    '    decimation = 4          <span class="cm"># policy runs at 50 Hz</span>','    sim.dt = 0.005          <span class="cm"># physics at 200 Hz</span>');
+  document.getElementById('code').innerHTML=L.join('\n').trim();
+}
+
+/* ======================= LEARNING CURVE ======================= */
+const cv=document.getElementById('curve'), cx2=cv.getContext('2d');
+let curveTarget=null, curveStart=0, curveHack=false;
+function startCurve(plateau,hack,instant){curveTarget=plateau;curveHack=hack;curveStart=performance.now()-(instant?1e6:0);}
+function css(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+function drawCurve(now){
+  const dpr=window.devicePixelRatio||1, w=cv.clientWidth, h=cv.clientHeight;
+  if(cv.width!==Math.round(w*dpr)||cv.height!==Math.round(h*dpr)){cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);}
+  const c=cx2; c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,w,h);
+  const pl=26,pr=8,pt=8,pb=18, W=w-pl-pr, H=h-pt-pb;
+  c.strokeStyle=css('--line'); c.lineWidth=1; c.font='11px '+css('--f-mono'); c.fillStyle=css('--muted');
+  [0,0.5,1].forEach(v=>{const y=pt+H*(1-v);c.beginPath();c.moveTo(pl,y);c.lineTo(pl+W,y);c.stroke();});
+  c.textAlign='right';c.textBaseline='middle';c.fillText('max',pl-4,pt);c.fillText('0',pl-4,pt+H);
+  c.textAlign='left';c.textBaseline='top';c.fillText('training iterations →',pl,pt+H+4);
+  if(curveTarget===null) return;
+  const dur=reduced()?300:2600, prog=Math.min(1,(now-curveStart)/dur), n=Math.max(2,Math.floor(120*prog));
+  const col=curveTarget>0.9?css('--good'):(curveHack?css('--warn'):css('--accent'));
+  const k=curveTarget>0.9?7:5, off=1/(1+Math.exp(k*0.35));
+  c.beginPath();
+  for(let i=0;i<n;i++){
+    const u=i/119, base=curveTarget*(1/(1+Math.exp(-k*(u-0.35)))-off)/(1-off);
+    const noise=((Math.sin(i*12.9898)*43758.5453)%1)*0.05;
+    const v=Math.max(0,Math.min(1,base+noise-0.02)), x=pl+W*u, y=pt+H*(1-v); i?c.lineTo(x,y):c.moveTo(x,y);
+  }
+  c.strokeStyle=col; c.lineWidth=2.2; c.stroke();
+  if(prog>=1&&curveHack){c.fillStyle=css('--warn');c.font='600 11px '+css('--f-body');c.textAlign='right';c.textBaseline='top';c.fillText('high reward, wrong behavior!',pl+W,pt+2);}
+}
+
+/* ======================= MOTION ======================= */
+let beh='idle', behStart=performance.now(), realMode=false;
+function setBehavior(b){beh=b;behStart=performance.now();}
+const ss=x=>x<=0?0:x>=1?1:x*x*(3-2*x);
+// flip-style keyframes [t,y,pitch,ext,peak]
+const KF={
+ idle:[[0,HS,0,.92],[3,HS,0,.92]],
+ stand:[[0,HS,0,.92],[1.5,HS-0.015,0,.9],[3,HS,0,.92]],
+ flip:[[0,HS,0,.92],[0.5,HS,0,.92],[0.8,HC,0,.7],[0.95,HS+.05,.25,1],[1.7,HC+.02,2*PI,.78,.95],[1.9,HC,2*PI,.7],[2.3,HS,2*PI,.92],[3.2,HS,2*PI,.92]],
+ hop:[[0,HS,0,.92],[0.5,HS,0,.92],[0.8,HC,0,.7],[0.95,HS+.05,0,1],[1.5,HC+.02,0,.85,.55],[1.7,HC,0,.7],[2.1,HS,0,.92],[2.8,HS,0,.92]],
+ smallhop:[[0,HS,0,.92],[0.4,HS,0,.92],[0.6,HC+.05,0,.75],[0.7,HS+.03,.15,1],[1.05,HC+.05,.25,.85,.22],[1.2,HC+.03,.05,.75],[1.5,HS,0,.92],[2.2,HS,0,.92]],
+ tip:[[0,HS,0,.92],[0.5,HS,0,.92],[0.8,HC,0,.7],[0.95,HS,.3,.95],[1.45,.45,1.35,.8,.18],[1.75,LIE,PI,.62],[3.4,LIE,PI,.62]],
+ crash:[[0,HS,0,.92],[0.5,HS,0,.92],[0.8,HC,0,.7],[0.95,HS+.05,.25,1],[1.6,.55,1.45*PI,.8,.8],[1.95,LIE,PI,.6],[3.6,LIE,PI,.6]],
+ overrotate:[[0,HS,0,.92],[0.5,HS,0,.92],[0.8,HC,0,.7],[0.95,HS+.05,.25,1],[1.7,.5,2.4*PI,.8,.95],[2.0,.26,2.15*PI,.35],[3.6,.26,2.15*PI,.35]],
+ lieback:[[0,HS,0,.92],[0.5,HS,0,.92],[0.8,HC,0,.7],[1.3,LIE,PI,.62],[3.6,LIE,PI,.62]],
+ stuck:[[0,LIE,PI,.6],[3,LIE,PI,.6]],
+ realfail:[[0,HS,0,.92],[0.5,HS,0,.92],[0.8,HC,0,.7],[0.95,HS+.05,.25,1],[1.7,HC+.02,2*PI,.78,.95],[1.85,HC-.03,2*PI-.15,.68],[2.25,.32,2*PI-.95,.5],[2.6,LIE+.02,PI*1.12,.6],[3.8,LIE+.02,PI*1.12,.6]],
+ flail:[[0,HS,0,.88],[3,HS,0,.88]], train:[[0,HS,0,.88],[3,HS,0,.88]], void:[[0,HS,0,.92],[3,HS,0,.92]],
+};
+// locomotion keyframes [t,x,y,pitch,ext,roll,gait]
+const KF2={
+ walkgood:[[0,-2.6,HS,0,.92,0,1],[5.5,2.6,HS,0,.92,0,1]],
+ walkflip:[[0,-1.2,HS,0,.92,0,1],[3,1.2,HS,0,.92,0,1],[3.4,1.2,HS,0,.92,0,0],[6.4,-1.2,HS,0,.92,0,1],[6.8,-1.2,HS,0,.92,0,0]],
+ lunge:[[0,-2.8,HS,-.08,.95,0,1.7],[1.8,1.6,HS+.04,-.12,.95,0,1.7],[2.5,2.4,LIE,-PI,.62,0,0],[3.8,2.4,LIE,-PI,.62,0,0]],
+ crawl:[[0,-2.2,.3,0,.42,0,1.2],[8,0.6,.3,0,.42,0,1.2]],
+ stumble:[[0,-2.6,HS,0,.92,0,1],[1.6,-1.0,HS,0,.92,0,1],[2.1,-.85,.27,0,.6,PI/2,0],[3.6,-.85,.27,0,.6,PI/2,0]],
+ shuffle:[[0,-1.6,HS-.03,0,.88,0,.25],[8,.8,HS-.03,0,.88,0,.25]],
+ walkrandom:[[0,-1.6,HS,0,.92,0,1],[1.6,.4,HS,0,.92,0,1],[2.2,.9,HS,0,.92,0,1],[3.6,-.6,HS,0,.92,0,1],[4.2,-.9,HS,0,.92,0,1],[5.2,-1.6,HS,0,.92,0,1]],
+ walkslip:[[0,-2.6,HS,0,.92,0,1],[1.6,-1.0,HS,0,.92,0,1],[1.75,-.9,HS-.05,0,.85,.25,0],[2.2,-.8,.27,0,.6,PI/2,0],[3.6,-.8,.27,0,.6,PI/2,0]],
+ climb:[[0,-2.2,HS,0,.92,0,1],[1.6,.15,HS,0,.92,0,1],[2.3,.55,HS+.13,.33,.92,0,.6],[3.0,1.35,HS+SH,0,.92,0,.6],[4.8,2.9,HS+SH,0,.92,0,1],[6.5,2.9,HS+SH,0,.92,0,0]],
+ scramble:[[0,-2.2,HS,0,.92,0,1],[1.6,.15,HS,0,.92,0,1],[2.6,.45,HS+.04,.45,.68,0,1.4],[3.6,1.3,HS+SH-.13,.08,.62,0,1.4],[5.0,2.7,HS+SH-.1,0,.7,0,1],[6.5,2.7,HS+SH-.1,0,.7,0,0]],
+ bump:[[0,-2.2,HS,0,.92,0,1],[1.6,.24,HS,0,.92,0,1],[1.75,.3,HS,-.14,.9,0,0],[2.2,-.15,HS,0,.92,0,0],[2.8,-.15,HS,0,.92,0,0]],
+ giveup:[[0,-2.2,HS,0,.92,0,1],[1.6,.12,HS,0,.92,0,1],[2.2,.12,HS-.09,0,.8,0,0],[2.6,.12,HS,0,.92,0,0],[4.6,.12,HS,0,.92,0,0]],
+ climbslip:[[0,-2.2,HS,0,.92,0,1],[1.6,.15,HS,0,.92,0,1],[2.3,.55,HS+.13,.33,.92,0,.6],[2.55,.45,HS+.06,.6,.8,0,0],[3.1,-.05,LIE,PI,.6,0,0],[4.6,-.05,LIE,PI,.6,0,0]],
+};
+function poseNow(t){
+  if(KF2[beh]){
+    const k=KF2[beh], T=k[k.length-1][0], tt=t%T; let a=k[0], b=k[0];
+    for(let i=0;i<k.length-1;i++){ if(tt>=k[i][0]&&tt<=k[i+1][0]){a=k[i];b=k[i+1];break;} }
+    const u=(tt-a[0])/((b[0]-a[0])||1), s=ss(u), g=a[6];
+    const P={x:a[1]+(b[1]-a[1])*u, y:a[2]+(b[2]-a[2])*s, p:a[3]+(b[3]-a[3])*s, e:a[4]+(b[4]-a[4])*s, r:a[5]+(b[5]-a[5])*s, g, gs:beh==='lunge'?12:(beh==='shuffle'?9:7), tt};
+    if(g>0){P.y+=0.012*g*Math.sin(t*P.gs*2); P.p+=0.012*Math.sin(t*P.gs*2);}
+    return P;
+  }
+  const k=KF[beh]||KF.idle, T=k[k.length-1][0], tt=t%T; let a=k[0], b=k[0];
+  for(let i=0;i<k.length-1;i++){ if(tt>=k[i][0]&&tt<=k[i+1][0]){a=k[i];b=k[i+1];break;} }
+  const u=(tt-a[0])/((b[0]-a[0])||1), s=ss(u);
+  let y=a[1]+(b[1]-a[1])*(b[4]?u:s), p=a[2]+(b[2]-a[2])*s, e=a[3]+(b[3]-a[3])*u;
+  if(b[4]){ y+=4*b[4]*u*(1-u); e-=0.28*Math.sin(PI*u); }
+  if(beh==='void'){ const tv=t%2.4; y=HS-4.9*tv*tv; }
+  return {x:0,y,p,e,r:0,g:0,gs:7,tt};
+}
+function legMods(L_ph,far,P,t,b,seed){
+  let ext=P.e, fx=0;
+  if(P.g>0){const ph=t*P.gs+L_ph*PI+(far?PI:0); fx=Math.sin(ph)*0.13*Math.min(1.3,P.g); ext-=Math.max(0,Math.cos(ph))*0.09*Math.min(1.3,P.g);}
+  if(b==='flail'||b==='train'){ext-=Math.abs(Math.sin(t*(7+L_ph*3+seed)+(far?2:0)))*0.25; fx=Math.sin(t*(9+seed)+L_ph+(far?1:0))*0.08;}
+  if((b==='lieback'||b==='tip'||b==='crash'||b==='stumble'||b==='walkslip')&&P.tt>1.8){ext-=Math.abs(Math.sin(t*6+L_ph*2+(far?1.3:0)))*0.25;}
+  return [ext,fx];
+}
+function legIK(hx,fx,ext){
+  const L1=.35,L2=.35, hip=[hx,-0.08], foot=[hx+fx,-0.08-(L1+L2)*Math.max(.3,Math.min(1,ext))];
+  const dx=foot[0]-hip[0], dy=foot[1]-hip[1], d=Math.min(Math.hypot(dx,dy),L1+L2-1e-3);
+  const a=Math.acos((L1*L1+d*d-L2*L2)/(2*L1*d)), ang=Math.atan2(dy,dx)-a;
+  return [hip,[hip[0]+L1*Math.cos(ang),hip[1]+L1*Math.sin(ang)],foot];
+}
+const stepVisible=()=>TASK==='climb'&&S.step&&beh!=='train'&&beh!=='void';
+const CAM={walk:{tx:0,dist:6.8},climb:{tx:1.0,dist:7.4},flip:{tx:null,dist:4.8}};
+
+/* ======================= 2D FALLBACK ======================= */
+const sv=document.getElementById('sim'), sc=sv.getContext('2d');
+function drawSim(now){
+  const dpr=window.devicePixelRatio||1, w=sv.clientWidth, h=sv.clientHeight;
+  if(sv.width!==Math.round(w*dpr)||sv.height!==Math.round(h*dpr)){sv.width=Math.round(w*dpr);sv.height=Math.round(h*dpr);}
+  const c=sc; c.setTransform(dpr,0,0,dpr,0,0); c.fillStyle=css('--sky'); c.fillRect(0,0,w,h);
+  const gy=h*0.84, S_=TASK==='flip'?Math.min(w/3.6,gy/2.45):Math.min(w/7.4,gy/2.2);
+  const t=(now-behStart)/1000, P=poseNow(t), cx0=TASK==='flip'?0:CAM[TASK].tx, noGround=beh==='void';
+  const X2=v=>w/2+(v-cx0)*S_;
+  if(!noGround){ c.fillStyle=css('--ground'); c.fillRect(0,gy,w,h-gy);
+    if(realMode){c.fillStyle=css('--warn');c.globalAlpha=.35;for(let gx=0;gx<w;gx+=48)c.fillRect(gx,gy,24,4);c.globalAlpha=1;} }
+  if(stepVisible()){c.fillStyle=css('--muted');c.globalAlpha=.55;c.fillRect(X2(STEPX),gy-SH*S_,X2(STEPX+3.6)-X2(STEPX),SH*S_);c.globalAlpha=1;}
+  const ox=X2(P.x), lying=Math.abs(P.r)>0.6;
+  const pp=P.p+(lying?PI*0.5*Math.sign(P.r):0)*0; // roll not shown in 2D
+  const W2=(bx,by)=>{const cs=Math.cos(pp),sn=Math.sin(pp);return [ox+(bx*cs-by*sn)*S_, gy-(P.y+bx*sn+by*cs)*S_];};
+  if(!noGround){c.fillStyle='rgba(0,0,0,.12)';c.beginPath();c.ellipse(ox,gy+3,S_*.6,5,0,0,2*PI);c.fill();}
+  const drawLeg=(hx,ph,far)=>{
+    const [ext,fx]=legMods(ph,far,P,t,beh,0), [hp,kn,ft]=legIK(hx,fx,ext);
+    const H=W2(...hp),K=W2(...kn),F=W2(...ft);
+    c.strokeStyle=far?css('--muted'):css('--robot-dark'); c.lineWidth=S_*(far?.075:.09); c.lineCap='round'; c.lineJoin='round';
+    c.beginPath();c.moveTo(...H);c.lineTo(...K);c.lineTo(...F);c.stroke();
+  };
+  [[.42,0],[-.42,1]].forEach(([hx,ph])=>drawLeg(hx,ph,true));
+  const body=[[-.48,.09],[.48,.09],[.52,.05],[.52,-.08],[.48,-.12],[-.48,-.12],[-.52,-.08],[-.52,.05]];
+  c.fillStyle=css('--robot'); c.strokeStyle=css('--robot-dark'); c.lineWidth=2;
+  c.beginPath(); body.forEach((pt,i)=>{const q=W2(...pt); i?c.lineTo(...q):c.moveTo(...q);}); c.closePath(); c.fill(); c.stroke();
+  { const q=W2(-.02,-.015); c.save(); c.translate(q[0],q[1]); c.rotate(-pp); c.fillStyle='#111'; c.font='800 '+Math.round(S_*.12)+'px "Noto Sans", Arial, sans-serif'; c.textAlign='center'; c.textBaseline='middle'; c.fillText('MCI',0,0); c.restore(); }
+  [[.42,0],[-.42,1]].forEach(([hx,ph])=>drawLeg(hx,ph,false));
+}
+
+/* ======================= 3D VIEW ======================= */
+let R3=null;
+const UP3=(typeof THREE!=='undefined')?new THREE.Vector3(0,1,0):null;
+function hexOf(n){const v=css(n);return v.startsWith('#')?parseInt(v.slice(1),16):0x888888;}
+let MCI_TEX=null;
+function mciTexture(){
+  if(MCI_TEX) return MCI_TEX;
+  const c=document.createElement('canvas'); c.width=512; c.height=128; const x=c.getContext('2d');
+  x.fillStyle='#111111'; x.font='800 118px "Noto Sans", Arial, sans-serif'; x.textAlign='center'; x.textBaseline='middle';
+  x.fillText('MCI',256,68);
+  MCI_TEX=new THREE.CanvasTexture(c); MCI_TEX.anisotropy=4; return MCI_TEX;
+}
+function makeRobot(scene,ghost){
+  const g=new THREE.Group(); scene.add(g);
+  const body=new THREE.Group(); body.rotation.order='XZY'; g.add(body);
+  const op=ghost?{transparent:true,opacity:.5}:{};
+  const shellMat=new THREE.MeshStandardMaterial(Object.assign({color:0xF4C430,roughness:.42,metalness:.12},op));
+  const panelMat=new THREE.MeshStandardMaterial(Object.assign({color:0xF8D35A,roughness:.5,metalness:.05},op));
+  const dark=new THREE.MeshStandardMaterial(Object.assign({color:0x2B3038,roughness:.55,metalness:.4},op));
+  const accent=new THREE.MeshStandardMaterial(Object.assign({color:0x3D8BD0,roughness:.4,metalness:.2,emissive:0x0d3d66,emissiveIntensity:.35},op));
+  const rubber=new THREE.MeshStandardMaterial(Object.assign({color:0x15171b,roughness:.9},op));
+  const lens=new THREE.MeshStandardMaterial(Object.assign({color:0x0a0c10,roughness:.15,metalness:.6},op));
+  const add=(geo,mat,x,y,z,rx,ry,rz)=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);if(rx)m.rotation.x=rx;if(ry)m.rotation.y=ry;if(rz)m.rotation.z=rz;m.castShadow=!ghost;body.add(m);return m;};
+  const rr=(w,hh,r)=>{const s=new THREE.Shape(),x=-w/2,y=-hh/2;s.moveTo(x+r,y);s.lineTo(x+w-r,y);s.quadraticCurveTo(x+w,y,x+w,y+r);s.lineTo(x+w,y+hh-r);s.quadraticCurveTo(x+w,y+hh,x+w-r,y+hh);s.lineTo(x+r,y+hh);s.quadraticCurveTo(x,y+hh,x,y+hh-r);s.lineTo(x,y+r);s.quadraticCurveTo(x,y,x+r,y);return s;};
+  const ext=(w,hh,r,d,bev)=>{const geo=new THREE.ExtrudeGeometry(rr(w,hh,r),{depth:d,bevelEnabled:true,bevelThickness:bev,bevelSize:bev,bevelSegments:3,curveSegments:6});geo.translate(0,0,-d/2);return geo;};
+  // chassis (no head): rounded graphite shell, light side panels, top rail with status light
+  add(ext(0.98,0.17,0.06,0.28,0.03),shellMat,0,-0.01,0);
+  [0.172,-0.172].forEach(z=>add(ext(0.7,0.1,0.04,0.004,0.006),panelMat,-0.02,-0.01,z));
+  // MCI lettering on both sides
+  const lbl=new THREE.MeshBasicMaterial({map:mciTexture(),transparent:true,opacity:ghost?.5:1,depthWrite:false});
+  [0.183,-0.183].forEach(z=>{const m=add(new THREE.PlaneGeometry(0.46,0.115),lbl,-0.02,-0.012,z,0,z>0?0:PI,0); m.castShadow=false;});
+  add(new THREE.BoxGeometry(0.62,0.025,0.16),dark,-0.03,0.095,0);
+  add(new THREE.BoxGeometry(0.34,0.012,0.03),accent,-0.03,0.11,0);
+  // flush sensor windows on both ends (no head)
+  [0.525,-0.525].forEach(x=>{ add(ext(0.2,0.08,0.03,0.008,0.006),dark,x,-0.015,0,0,PI/2,0);
+    [-0.05,0.05].forEach(z=>add(new THREE.CylinderGeometry(0.018,0.018,0.012,14),lens,x+(x>0?0.012:-0.012),-0.012,z,0,0,PI/2)); });
+  const legs=[];
+  [[0.40,0.215,0,false],[0.40,-0.215,0,true],[-0.40,0.215,1,false],[-0.40,-0.215,1,true]].forEach(([hx,z,ph,far])=>{
+    // hip actuator (axis sideways) with accent ring
+    add(new THREE.CylinderGeometry(0.075,0.075,0.09,22),dark,hx,-0.08,z-(z>0?0.005:-0.005),PI/2);
+    add(new THREE.CylinderGeometry(0.077,0.077,0.015,22),accent,hx,-0.08,z+(z>0?0.04:-0.04),PI/2);
+    const thigh=add(new THREE.BoxGeometry(0.085,1,0.06),dark,0,0,0);
+    const shank=add(new THREE.CylinderGeometry(0.026,0.02,1,12),dark,0,0,0);
+    const knee=add(new THREE.CylinderGeometry(0.048,0.048,0.075,18),dark,0,0,0,PI/2);
+    const foot=add(new THREE.SphereGeometry(0.042,14,10),rubber,0,0,0);
+    legs.push({hx,z,ph,far,thigh,shank,knee,foot});
+  });
+  return {g,body,legs,dark,yellow:panelMat,seed:Math.random()*10};
+}
+function seg3(m,a,b){const d=new THREE.Vector3().subVectors(b,a);const L=d.length();m.position.copy(a).addScaledVector(d,.5);m.scale.set(1,L,1);m.quaternion.setFromUnitVectors(UP3,d.normalize());}
+function poseRobot(rb,P,X,Z,t,b,seed){
+  rb.g.position.set(X,P.y,Z); rb.body.rotation.set(P.r||0,0,P.p);
+  rb.legs.forEach(L=>{
+    const [ext,fx]=legMods(L.ph,L.far,P,t,b,seed), [h,k,f]=legIK(L.hx,fx,ext);
+    const H=new THREE.Vector3(h[0],h[1],L.z),K=new THREE.Vector3(k[0],k[1],L.z),F=new THREE.Vector3(f[0],f[1],L.z);
+    seg3(L.thigh,H,K); seg3(L.shank,K,F); L.knee.position.copy(K); L.foot.position.copy(F);
+  });
+}
+function init3D(){
+  if(typeof THREE==='undefined') return;
+  try{
+    const wrap=document.getElementById('simwrap');
+    const renderer=new THREE.WebGLRenderer({antialias:true});
+    renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+    renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+    wrap.insertBefore(renderer.domElement,wrap.firstChild);
+    renderer.domElement.setAttribute('aria-label','3D view of the robot');
+    const c2=document.getElementById('sim'); c2.hidden=true; c2.style.display='none';
+    const scene=new THREE.Scene();
+    const cam=new THREE.PerspectiveCamera(36,16/9,0.1,300);
+    scene.add(new THREE.HemisphereLight(0xffffff,0x6f6880,0.9));
+    const sun=new THREE.DirectionalLight(0xffffff,0.7); sun.position.set(4,9,6); sun.castShadow=true;
+    sun.shadow.mapSize.set(2048,2048); Object.assign(sun.shadow.camera,{left:-7,right:7,top:7,bottom:-7,far:30});
+    scene.add(sun); scene.add(sun.target);
+    const groundMat=new THREE.MeshStandardMaterial({color:0xC9C3D6,roughness:.95});
+    const ground=new THREE.Mesh(new THREE.PlaneGeometry(200,200),groundMat); ground.rotation.x=-PI/2; ground.receiveShadow=true; scene.add(ground);
+    const grid=new THREE.GridHelper(200,200,0x9a93ad,0x9a93ad); grid.position.y=0.002; grid.material.transparent=true; grid.material.opacity=.3; scene.add(grid);
+    const tape=new THREE.Group(); const tapeMat=new THREE.MeshStandardMaterial({color:0xE0A030,roughness:.8});
+    [-1.3,1.3].forEach(z=>{const m=new THREE.Mesh(new THREE.BoxGeometry(9,0.006,0.08),tapeMat);m.position.set(0,0.003,z);tape.add(m);}); scene.add(tape);
+    const stepMat=new THREE.MeshStandardMaterial({color:0x9a93ad,roughness:.85});
+    const step=new THREE.Mesh(new THREE.BoxGeometry(3.6,SH,2.4),stepMat); step.position.set(STEPX+1.8,SH/2,0); step.castShadow=true; step.receiveShadow=true; scene.add(step);
+    const main=makeRobot(scene,false);
+    const ghosts=[]; const N=6, sp=2.6;
+    for(let i=0;i<N;i++)for(let j=0;j<N;j++){ if(i===2&&j===3) continue; const r=makeRobot(scene,true); r.pos=[(i-2.5)*sp+1.3,(j-3)*sp]; r.g.visible=false; ghosts.push(r);}
+    const st={renderer,scene,cam,ground,groundMat,grid,tape,step,stepMat,main,ghosts,az:0.5,el:0.2,dist:6.8,tgt:new THREE.Vector3(0,0.7,0),themeTick:0,drag:null,snap:true};
+    const el=renderer.domElement;
+    el.addEventListener('pointerdown',e=>{st.drag=[e.clientX,e.clientY,st.az,st.el];el.setPointerCapture(e.pointerId);});
+    el.addEventListener('pointermove',e=>{if(!st.drag)return;st.az=st.drag[2]-(e.clientX-st.drag[0])*0.008;st.el=Math.max(0.03,Math.min(1.2,st.drag[3]+(e.clientY-st.drag[1])*0.006));});
+    el.addEventListener('pointerup',()=>st.drag=null); el.addEventListener('pointercancel',()=>st.drag=null);
+    document.getElementById('dragHint').hidden=false;
+    R3=st;
+  }catch(err){ R3=null; const c2=document.getElementById('sim'); c2.hidden=false; c2.style.display=''; }
+}
+function draw3D(now){
+  const st=R3, wrap=document.getElementById('simwrap'), w=wrap.clientWidth, h=wrap.clientHeight, pr=st.renderer.getPixelRatio(), cnv=st.renderer.domElement;
+  if(cnv.width!==Math.round(w*pr)||cnv.height!==Math.round(h*pr)){st.renderer.setSize(w,h,false);st.cam.aspect=w/h;st.cam.updateProjectionMatrix();}
+  if(st.themeTick--<=0){
+    st.themeTick=30;
+    const sky=hexOf('--sky'); st.scene.background=new THREE.Color(sky); st.scene.fog=new THREE.Fog(sky,12,38);
+    st.groundMat.color.setHex(realMode?hexOf('--panel-2'):hexOf('--ground')); st.groundMat.color.multiplyScalar(0.62);
+    st.grid.material.color.setHex(hexOf('--muted'));
+    st.stepMat.color.setHex(hexOf('--muted'));
+    const dk=hexOf('--robot-dark'); [st.main,...st.ghosts].forEach(r=>r.dark.color.setHex(dk));
+  }
+  const t=(now-behStart)/1000, P=poseNow(t), noGround=beh==='void', showG=beh==='train';
+  st.ground.visible=!noGround; st.grid.visible=!noGround&&!realMode; st.tape.visible=!noGround&&realMode; st.step.visible=stepVisible();
+  poseRobot(st.main,P,P.x,0,t,beh,0);
+  st.ghosts.forEach(r=>{
+    r.g.visible=showG; if(!showG) return;
+    const s=r.seed, hop=Math.max(0,Math.sin(t*(2.2+s*.15)+s))*0.18*((s*7)%1);
+    const G={x:0,y:HS+hop-(Math.sin(t*1.7+s)>0.85?0.25:0),p:Math.sin(t*(1.3+s*.1)+s)*0.25*((s*3)%1),e:.88,r:0,g:0,gs:7,tt:0};
+    poseRobot(r,G,r.pos[0],r.pos[1],t+s,'train',s%1);
+  });
+  const cfg=CAM[TASK];
+  const goalD=showG?15:cfg.dist, goalX=showG?0:(cfg.tx===null?P.x:cfg.tx);
+  const goalY=showG?0.3:(TASK==='flip'?Math.max(0.55,Math.min(1.2,P.y*0.6+0.25)):0.75);
+  const kk=st.snap?1:0.06; st.snap=false;
+  st.dist+=(goalD-st.dist)*kk; st.tgt.x+=(goalX-st.tgt.x)*Math.max(kk,0.1); st.tgt.y+=(goalY-st.tgt.y)*kk;
+  const ce=Math.cos(st.el);
+  st.cam.position.set(st.tgt.x+Math.sin(st.az)*st.dist*ce, st.tgt.y+Math.sin(st.el)*st.dist, Math.cos(st.az)*st.dist*ce);
+  st.cam.lookAt(st.tgt);
+  st.renderer.render(st.scene,st.cam);
+}
+function updOverlay(){
+  const o=document.getElementById('ovl');
+  o.className='ovl'+(realMode?' real':'');
+  o.textContent=realMode?'real hardware':beh==='train'?`trial and error in ${S.envs} parallel worlds…${R3&&S.envs!=='1'?' (showing 36)':''}`:beh==='idle'?'untrained policy':beh==='void'?'no ground in the scene':'learned policy · simulation';
+}
+function loop(now){ if(R3) draw3D(now); else drawSim(now); drawCurve(now); updOverlay(); requestAnimationFrame(loop); }
+
+/* ======================= BOOT ======================= */
+document.getElementById('h1').textContent=TASKS[TASK].h1;
+renderTasks(); renderCfg(); updateStats(); renderCode(); showIntro(); init3D(); requestAnimationFrame(loop);
+</script>
+
+</body>
+</html>
